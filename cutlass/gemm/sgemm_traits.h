@@ -41,6 +41,62 @@ namespace gemm {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <
+        /// The type of elements
+        typename elemType,
+        /// The tile size for the GEMM KxNxM.
+        typename OutputTile_,
+        /// Tile size for thread-level GEMM (K-by-N-by-M)
+        typename ThreadGemmShape_,
+        /// The number of scalars per LDG for A.
+        int kScalarsPerLdgA_ = 1,
+        /// The number of scalars per LDG for B.
+        int kScalarsPerLdgB_ = 1,
+        /// Whether to specify launch bounds
+        bool kLaunchBounds = true,
+        /// The functor to do the math in the main loop
+        typename mainFunctor = ThreadMultiplyAdd<ThreadGemmShape_, Shape<1, 4, 8>, elemType, elemType, elemType> >
+struct NonTypedGemmConfig : public GemmConfig<
+        /// The scalar type for A.
+        elemType,
+        /// The scalar type for B.
+        elemType,
+        /// The scalar type for C.
+        elemType,
+        /// The scalar type for D.
+        elemType,
+        /// The tile size for the GEMM KxNxM.
+        OutputTile_,
+        /// The functor to do the math in the main loop.
+        mainFunctor,
+        /// The number of scalars per LDG for A.
+        kScalarsPerLdgA_,
+        /// The number of scalars per STS for A.
+        kScalarsPerLdgA_,
+        /// The number of scalars per LDS for A.
+        4,
+        /// The number of scalars per LDG for B.
+        kScalarsPerLdgB_,
+        /// The number of scalars per STS for B.
+        kScalarsPerLdgB_,
+        /// The number of scalars per LDS for B.
+        4,
+        /// The number of scalars per LDG for C and STG for D.
+        1,
+        /// The number of scalars per STS for D.
+        4,
+        /// The number of scalars per LDS for D.
+        1,
+        /// The number of stages in shared memory.
+        2,
+        /// kResidueSeparate
+        false,
+        /// kResidueInPrologue
+        true,
+        /// kLaunchBounds
+        kLaunchBounds> {};
+
+
+template <
     /// The tile size for the GEMM KxNxM.
     typename OutputTile_,
     /// Tile size for thread-level GEMM (K-by-N-by-M)
@@ -51,45 +107,53 @@ template <
     int kScalarsPerLdgB_ = 1,
     /// Whether to specify launch bounds
     bool kLaunchBounds = true>
-struct SgemmConfig : public GemmConfig<
-                         /// The scalar type for A.
-                         float,
-                         /// The scalar type for B.
-                         float,
-                         /// The scalar type for C.
-                         float,
-                         /// The scalar type for D.
-                         float,
-                         /// The tile size for the GEMM KxNxM.
-                         OutputTile_,
-                         /// The functor to do the math in the main loop.
-                         ThreadMultiplyAdd<ThreadGemmShape_, Shape<1, 4, 8>, float, float, float>,
-                         /// The number of scalars per LDG for A.
-                         kScalarsPerLdgA_,
-                         /// The number of scalars per STS for A.
-                         kScalarsPerLdgA_,
-                         /// The number of scalars per LDS for A.
-                         4,
-                         /// The number of scalars per LDG for B.
-                         kScalarsPerLdgB_,
-                         /// The number of scalars per STS for B.
-                         kScalarsPerLdgB_,
-                         /// The number of scalars per LDS for B.
-                         4,
-                         /// The number of scalars per LDG for C and STG for D.
-                         1,
-                         /// The number of scalars per STS for D.
-                         4,
-                         /// The number of scalars per LDS for D.
-                         1,
-                         /// The number of stages in shared memory.
-                         2,
-                         /// kResidueSeparate
-                         false,
-                         /// kResidueInPrologue
-                         true,
-                         /// kLaunchBounds
-                         kLaunchBounds> {};
+struct SgemmConfig : public NonTypedGemmConfig<
+        float,
+        OutputTile_,
+        ThreadGemmShape_,
+        kScalarsPerLdgA_,
+        kScalarsPerLdgB_,
+        kLaunchBounds> {};
+
+template <
+        /// The tile size for the GEMM KxNxM.
+        typename OutputTile_,
+        /// Tile size for thread-level GEMM (K-by-N-by-M)
+        typename ThreadGemmShape_,
+        /// The number of scalars per LDG for A.
+        int kScalarsPerLdgA_ = 1,
+        /// The number of scalars per LDG for B.
+        int kScalarsPerLdgB_ = 1,
+        /// Whether to specify launch bounds
+        bool kLaunchBounds = true>
+struct IgemmConfig : public NonTypedGemmConfig<
+        unsigned int,
+        OutputTile_,
+        ThreadGemmShape_,
+        kScalarsPerLdgA_,
+        kScalarsPerLdgB_,
+        kLaunchBounds,
+        ThreadMultiplyAddBool<ThreadGemmShape_, Shape<1, 4, 8>, unsigned int, unsigned int, unsigned int> > {};
+
+template <
+        /// The tile size for the GEMM KxNxM.
+        typename OutputTile_,
+        /// Tile size for thread-level GEMM (K-by-N-by-M)
+        typename ThreadGemmShape_,
+        /// The number of scalars per LDG for A.
+        int kScalarsPerLdgA_ = 1,
+        /// The number of scalars per LDG for B.
+        int kScalarsPerLdgB_ = 1,
+        /// Whether to specify launch bounds
+        bool kLaunchBounds = true>
+struct BgemmConfig : public NonTypedGemmConfig<
+        unsigned char,
+        OutputTile_,
+        ThreadGemmShape_,
+        kScalarsPerLdgA_,
+        kScalarsPerLdgB_,
+        kLaunchBounds,
+        ThreadMultiplyAddBool<ThreadGemmShape_, Shape<1, 4, 8>, unsigned char, unsigned char, unsigned char> > {};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
