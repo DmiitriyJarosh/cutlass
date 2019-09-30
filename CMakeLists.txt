@@ -337,5 +337,5 @@ if (DOXYGEN_FOUND)
     )
 endif()
 
-add_subdirectory(tools)
-add_subdirectory(examples)
+#add_subdirectory(tools)
+add_subdirectory(examples/my_mult_example)
