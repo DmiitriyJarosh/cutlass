@@ -133,7 +133,7 @@ struct IgemmConfig : public NonTypedGemmConfig<
         kScalarsPerLdgA_,
         kScalarsPerLdgB_,
         kLaunchBounds,
-        ThreadMultiplyAddBool<ThreadGemmShape_, Shape<1, 4, 8>, unsigned int, unsigned int, unsigned int> > {};
+        ThreadMultiplyAddBoolVector<ThreadGemmShape_, Shape<1, 4, 8>, unsigned int, unsigned int, unsigned int> > {};
 
 template <
         /// The tile size for the GEMM KxNxM.
