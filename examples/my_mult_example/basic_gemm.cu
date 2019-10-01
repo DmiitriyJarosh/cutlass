@@ -174,28 +174,38 @@ __global__ void InitializeMatrix_kernel(
   if (i < rows && j < columns) {
     int offset = i + j * ldm;
 
-    // Generate arbitrary elements.
-    //int const k = 16807;
-    //int const m = 16;
-    //float value = float(((offset + seed) * k % m) - m / 2);
-
     matrix[offset] = 0;
-    if (i >= rows - 2 && j < 1 || i < 1 && j >= columns - 2) {
-      matrix[offset] = 1;
+    if (i >= rows - 2 && j < 1) {
+      matrix[offset] = 0x10;
+    }
+    if (i < 1 && j >= columns - 2) {
+        matrix[offset] = 0x01;
     }
   }
 }
 
 /// Simple function to initialize a matrix to arbitrary small integers.
-cudaError_t InitializeMatrix(unsigned int *matrix, int ldm, int rows, int columns, int seed = 0) {
+cudaError_t InitializeMatrix(unsigned int *matrix, int ldm, int rows, int columns, unsigned int ** matrix_data = nullptr) {
+
+  if (matrix_data != nullptr) {
+      unsigned int * matrix_in_line = new unsigned int[rows * columns];
+      for (int i = 0; i < rows; i++) {
+          for (int j = 0; j < columns; j++) {
+              int offset = i + j * ldm;
+              matrix_in_line[offset] = matrix_data[i][j];
+          }
+      }
+      cudaMemcpy(matrix, matrix_in_line, rows * columns * sizeof(unsigned int), cudaMemcpyHostToDevice);
+      return cudaGetLastError();
+  }
 
   dim3 block(16, 16);
   dim3 grid(
-    (rows + block.x - 1) / block.x,
-    (columns + block.y - 1) / block.y
+          (rows + block.x - 1) / block.x,
+          (columns + block.y - 1) / block.y
   );
 
-  InitializeMatrix_kernel<<< grid, block >>>(matrix, ldm, rows, columns, seed);
+  InitializeMatrix_kernel<<< grid, block >>>(matrix, ldm, rows, columns);
 
   return cudaGetLastError();
 }
@@ -203,7 +213,7 @@ cudaError_t InitializeMatrix(unsigned int *matrix, int ldm, int rows, int column
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// Allocates device memory for a matrix then fills with arbitrary small integers.
-cudaError_t AllocateMatrix(unsigned int **matrix, int ldm, int rows, int columns, int seed = 0) {
+cudaError_t AllocateMatrix(unsigned int **matrix, int ldm, int rows, int columns, unsigned int ** matrix_data = nullptr) {
   cudaError_t result;
 
   size_t sizeof_matrix = sizeof(unsigned int) * ldm * columns;
@@ -226,8 +236,8 @@ cudaError_t AllocateMatrix(unsigned int **matrix, int ldm, int rows, int columns
     return result;
   }
 
-  // Initialize matrix elements to arbitrary small integers.
-  result = InitializeMatrix(*matrix, ldm, rows, columns, seed);
+  // Initialize matrix elements
+  result = InitializeMatrix(*matrix, ldm, rows, columns, matrix_data);
 
   if (result != cudaSuccess) {
     std::cerr << "Failed to initialize matrix: "
@@ -297,7 +307,8 @@ cudaError_t ReferenceGemm(
 
 /// Allocate several matrices in GPU device memory and call a single-precision
 /// CUTLASS GEMM kernel.
-cudaError_t TestCutlassGemm(int M, int N, int K, unsigned int alpha, unsigned int beta) {
+cudaError_t TestCutlassGemm(int M, int N, int K, unsigned int alpha, unsigned int beta, unsigned int ** matrixA = nullptr,
+                            unsigned int ** matrixB = nullptr) {
   cudaError_t result;
 
   //
@@ -324,20 +335,20 @@ cudaError_t TestCutlassGemm(int M, int N, int K, unsigned int alpha, unsigned in
   // Allocate matrices in GPU device memory with arbitrary seeds.
   //
 
-  result = AllocateMatrix(&A, lda, M, K, 0);
+  result = AllocateMatrix(&A, lda, M, K, matrixA);
 
   if (result !=  cudaSuccess) {
     return result;
   }
 
-  result = AllocateMatrix(&B, ldb, K, N, 17);
+  result = AllocateMatrix(&B, ldb, K, N, matrixB);
 
   if (result !=  cudaSuccess) {
     cudaFree(A);
     return result;
   }
 
-  result = AllocateMatrix(&C_cutlass, ldc, M, N, 101);
+  result = AllocateMatrix(&C_cutlass, ldc, M, N, nullptr);
 
   if (result != cudaSuccess) {
     cudaFree(A);
@@ -345,7 +356,7 @@ cudaError_t TestCutlassGemm(int M, int N, int K, unsigned int alpha, unsigned in
     return result;
   }
 
-  result = AllocateMatrix(&C_reference, ldc, M, N, 101);
+  result = AllocateMatrix(&C_reference, ldc, M, N, nullptr);
 
   if (result != cudaSuccess) {
     cudaFree(A);
@@ -457,11 +468,12 @@ cudaError_t TestCutlassGemm(int M, int N, int K, unsigned int alpha, unsigned in
 
   return cudaSuccess;
 }
-//test arr  = cudaMalloc() ...
-//
-__global__ void set_grammar(int* test_device_arr) {
-    device_magic_num = test_device_arr;
 
+// function which set grammar to device for special multiplication
+__global__ void set_grammar(unsigned int * global_device_grammar_body, unsigned long long * global_device_grammar_tail, int grammar_size) {
+    device_grammar_body = global_device_grammar_body;
+    device_grammar_tail = global_device_grammar_tail;
+    device_grammar_size = grammar_size;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -470,18 +482,8 @@ __global__ void set_grammar(int* test_device_arr) {
 //
 // usage:
 //
-//   00_basic_gemm <M> <N> <K> <alpha> <beta>
+//   my_mult_example <M> <N> <K> <alpha> <beta>
 //
-
-#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
-inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
-{
-    if (code != cudaSuccess)
-    {
-        fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
-        if (abort) exit(code);
-    }
-}
 
 int main(int argc, const char *arg[]) {
 
@@ -505,16 +507,38 @@ int main(int argc, const char *arg[]) {
     ss >> scalars[i - 4];
   }
 
+  unsigned int ** matrixA = new unsigned int*[4];
+  matrixA[0] = new unsigned int[4]{0,0,0,0x1};
+  matrixA[1] = new unsigned int[4]{0,0,0,0};
+  matrixA[2] = new unsigned int[4]{0,0,0,0};
+  matrixA[3] = new unsigned int[4]{0x10,0,0,0};
+
+  unsigned int ** matrixB = new unsigned int*[4];
+  matrixB[0] = new unsigned int[4]{0,0,0,0x1};
+  matrixB[1] = new unsigned int[4]{0,0,0,0};
+  matrixB[2] = new unsigned int[4]{0,0,0,0};
+  matrixB[3] = new unsigned int[4]{0x10,0,0,0};
+
+  int grammar_size = 3;
+  unsigned int * grammar_body = new unsigned int[grammar_size]{0x1,0x100,0x10};
+  unsigned long long * grammar_tail = new unsigned long long[grammar_size]{0x100000010,0x100000010,0x10};
+
+  unsigned int * global_device_grammar_body = 0;
+  unsigned long long * global_device_grammar_tail = 0;
+
+  cudaMalloc((void**)&global_device_grammar_body, grammar_size * sizeof(unsigned int));
+  cudaMalloc((void**)&global_device_grammar_tail, grammar_size * sizeof(unsigned long long));
+
+  cudaMemcpy(global_device_grammar_body, grammar_body, grammar_size * sizeof(unsigned int), cudaMemcpyHostToDevice);
+  cudaMemcpy(global_device_grammar_tail, grammar_tail, grammar_size * sizeof(unsigned long long), cudaMemcpyHostToDevice);
+
+  set_grammar<<<1,1>>>(global_device_grammar_body, global_device_grammar_tail, grammar_size);
+
+  cudaDeviceSynchronize();
+
   //
   // Run the CUTLASS GEMM test.
   //
-
-  int* test_arr = new int[3]{1,2,3};
-  int* test_device_arr = 0;
-  cudaMalloc((void**)&test_device_arr, 3* sizeof(int));
-  cudaMemcpy(test_device_arr, test_arr, 3 * sizeof(int), cudaMemcpyHostToDevice);
-  set_grammar<<<1,1>>>(test_device_arr);
-    gpuErrchk(cudaDeviceSynchronize());
 
 
   cudaError_t result = TestCutlassGemm(
@@ -522,7 +546,9 @@ int main(int argc, const char *arg[]) {
     problem[1],     // GEMM N dimension
     problem[2],     // GEMM K dimension
     scalars[0],     // alpha
-    scalars[1]      // beta
+    scalars[1],     // beta
+    matrixA,
+    matrixB
   );
 
   if (result == cudaSuccess) {

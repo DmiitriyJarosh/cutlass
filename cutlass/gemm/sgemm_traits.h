@@ -147,13 +147,13 @@ template <
         /// Whether to specify launch bounds
         bool kLaunchBounds = true>
 struct BgemmConfig : public NonTypedGemmConfig<
-        unsigned char,
+        unsigned int,
         OutputTile_,
         ThreadGemmShape_,
         kScalarsPerLdgA_,
         kScalarsPerLdgB_,
         kLaunchBounds,
-        ThreadMultiplyAddBool<ThreadGemmShape_, Shape<1, 4, 8>, unsigned char, unsigned char, unsigned char> > {};
+        ThreadMultiplyAddBool<ThreadGemmShape_, Shape<1, 4, 8>, unsigned int, unsigned int, unsigned int> > {};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

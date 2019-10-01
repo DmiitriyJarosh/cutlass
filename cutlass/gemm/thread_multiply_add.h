@@ -167,7 +167,9 @@ struct ThreadMultiplyAddBool {
         }
     }
 };
-__device__ int *device_magic_num;
+__device__ unsigned int * device_grammar_body;
+__device__ unsigned long long * device_grammar_tail;
+__device__ int device_grammar_size;
 
 template <typename ThreadGemmShape_,
         typename ThreadsPerWarp_,
@@ -207,9 +209,7 @@ struct ThreadMultiplyAddBoolVector {
                                      FragmentB const& b,
                                      Accumulators const& c,
                                      Accumulators& d) {
-
-        // device
-        printf("glonls%d",device_magic_num[1]);
+        
         if(kLayout_ == MatrixLayout::kColumnMajor) {
 
             CUTLASS_PRAGMA_UNROLL
@@ -217,8 +217,19 @@ struct ThreadMultiplyAddBoolVector {
 
                 CUTLASS_PRAGMA_UNROLL
                 for (int i = 0; i < AccumulatorsPerThread::kW; ++i) {
+                    unsigned long long left = a[i];
+                    left <<= 32;
+                    unsigned long long right = b[j];
+                    unsigned long long conc = left | right;
+                    unsigned long long mult = 0;
 
-                    d[j * AccumulatorsPerThread::kW + i] = a[i] & b[j] | c[j * AccumulatorsPerThread::kW + i];
+                    CUTLASS_PRAGMA_UNROLL
+                    for (int t = 0; t < device_grammar_size; t++) {
+                        if (device_grammar_tail[t] == conc) {
+                            mult |= device_grammar_body[t];
+                        }
+                    }
+                    d[j * AccumulatorsPerThread::kW + i] = mult | c[j * AccumulatorsPerThread::kW + i];
                 }
             }
         }
