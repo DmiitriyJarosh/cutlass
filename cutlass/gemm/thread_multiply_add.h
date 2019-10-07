@@ -240,8 +240,19 @@ struct ThreadMultiplyAddBoolVector {
 
                 CUTLASS_PRAGMA_UNROLL
                 for(int j = 0; j < AccumulatorsPerThread::kH; ++j) {
+                    unsigned long long left = a[i];
+                    left <<= 32;
+                    unsigned long long right = b[j];
+                    unsigned long long conc = left | right;
+                    unsigned long long mult = 0;
 
-                    d[i * AccumulatorsPerThread::kH + j] = a[i] & b[j] | c[i * AccumulatorsPerThread::kH + j];
+                    CUTLASS_PRAGMA_UNROLL
+                    for (int t = 0; t < device_grammar_size; t++) {
+                        if (device_grammar_tail[t] == conc) {
+                            mult |= device_grammar_body[t];
+                        }
+                    }
+                    d[i * AccumulatorsPerThread::kH + j] = mult | c[i * AccumulatorsPerThread::kH + j];
                 }
             }
         }
