@@ -167,9 +167,10 @@ struct ThreadMultiplyAddBool {
         }
     }
 };
-__device__ unsigned int * device_grammar_body;
-__device__ unsigned long long * device_grammar_tail;
-__device__ int device_grammar_size;
+
+__constant__ int device_grammar_size;
+__constant__ unsigned int device_grammar_body[1000];
+__constant__ unsigned long long device_grammar_tail[1000];
 
 template <typename ThreadGemmShape_,
         typename ThreadsPerWarp_,
