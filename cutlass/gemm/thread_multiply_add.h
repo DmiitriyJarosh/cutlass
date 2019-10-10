@@ -226,7 +226,7 @@ struct ThreadMultiplyAddBoolVector {
 
                     CUTLASS_PRAGMA_UNROLL
                     for (int t = 0; t < device_grammar_size; t++) {
-                        if (device_grammar_tail[t] == conc) {
+                        if ((device_grammar_tail[t] & conc) == device_grammar_tail[t]) {
                             mult |= device_grammar_body[t];
                         }
                     }
@@ -249,7 +249,7 @@ struct ThreadMultiplyAddBoolVector {
 
                     CUTLASS_PRAGMA_UNROLL
                     for (int t = 0; t < device_grammar_size; t++) {
-                        if (device_grammar_tail[t] == conc) {
+                        if ((device_grammar_tail[t] & conc) == device_grammar_tail[t]) {
                             mult |= device_grammar_body[t];
                         }
                     }
