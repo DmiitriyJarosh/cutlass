@@ -347,27 +347,27 @@ cudaError_t TestCutlassGemm(int M, int N, int K, int8_t alpha, int8_t beta, int8
 
   for (int i = 0; i < 16; i++) {
     if (i % 4 == 0) {
-        std::cout << std::endl;
+        printf("\n");
     }
-    std::cout << A_r[i] << " ";
+    printf("%p ", A_r[i]);
   }
-  std::cout << std::endl;
+  printf("\n");
 
   for (int i = 0; i < 16; i++) {
-    if (i % 4 == 0) {
-        std::cout << std::endl;
-    }
-    std::cout << B_r[i] << " ";
+      if (i % 4 == 0) {
+          printf("\n");
+      }
+      printf("%p ", B_r[i]);
   }
-  std::cout << std::endl;
+  printf("\n");
 
   for (int i = 0; i < 16; i++) {
-    if (i % 4 == 0) {
-        std::cout << std::endl;
-    }
-    std::cout << host_cutlass[i] << " ";
+      if (i % 4 == 0) {
+          printf("\n");
+      }
+      printf("%p ", host_cutlass[i]);
   }
-  std::cout << std::endl;
+  printf("\n");
 
   //
   // Free device memory allocations.
@@ -419,29 +419,33 @@ int main(int argc, const char *arg[]) {
   }
 
   int8_t ** matrixA = new int8_t*[4];
-  matrixA[0] = new int8_t[4]{0,0,0,0x1};
+  matrixA[0] = new int8_t[4]{0,0,0,0};
   matrixA[1] = new int8_t[4]{0,0,0,0};
   matrixA[2] = new int8_t[4]{0,0,0,0};
   matrixA[3] = new int8_t[4]{0x10,0,0,0};
-
+  
   int8_t ** matrixB = new int8_t*[4];
-  matrixB[0] = new int8_t[4]{0,0,0,0x1};
+  matrixB[0] = new int8_t[4]{0,0,0,0x10};
   matrixB[1] = new int8_t[4]{0,0,0,0};
   matrixB[2] = new int8_t[4]{0,0,0,0};
-  matrixB[3] = new int8_t[4]{0x10,0,0,0};
+  matrixB[3] = new int8_t[4]{0,0,0,0};
 
   int grammar_size = 3;
-  unsigned int * grammar_body = new unsigned int[grammar_size]{0x1,0x100,0x10};
-  unsigned long long * grammar_tail = new unsigned long long[grammar_size]{0x100000010,0x100000010,0x10};
+  unsigned char * grammar_body = new unsigned char[grammar_size]{0x1,0x5,0x4};
+  unsigned int * grammar_tail = new unsigned int[grammar_size]{0x111,0x1010,0x10};
 
   unsigned int * global_device_grammar_body = 0;
   unsigned long long * global_device_grammar_tail = 0;
 
-  cudaMalloc((void**)&global_device_grammar_body, grammar_size * sizeof(int8_t));
-  cudaMalloc((void**)&global_device_grammar_tail, grammar_size * sizeof(unsigned long long));
+  cudaMalloc((void**)&global_device_grammar_body, grammar_size * sizeof(unsigned char));
+  cudaMalloc((void**)&global_device_grammar_tail, grammar_size * sizeof(unsigned int));
 
-  cudaMemcpy(global_device_grammar_body, grammar_body, grammar_size * sizeof(int8_t), cudaMemcpyHostToDevice);
-  cudaMemcpy(global_device_grammar_tail, grammar_tail, grammar_size * sizeof(unsigned long long), cudaMemcpyHostToDevice);
+  cudaMemcpy(global_device_grammar_body, grammar_body, grammar_size * sizeof(unsigned char), cudaMemcpyHostToDevice);
+  cudaMemcpy(global_device_grammar_tail, grammar_tail, grammar_size * sizeof(unsigned int), cudaMemcpyHostToDevice);
+
+  cudaMemcpyToSymbol(device_grammar_body, global_device_grammar_body, grammar_size * sizeof(unsigned char));
+  cudaMemcpyToSymbol(device_grammar_tail, global_device_grammar_tail, grammar_size * sizeof(unsigned int));
+  cudaMemcpyToSymbol(device_grammar_size, &grammar_size, sizeof(int));
 
   //set_grammar<<<1,1>>>(global_device_grammar_body, global_device_grammar_tail, grammar_size);
 

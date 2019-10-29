@@ -101,77 +101,77 @@ struct ThreadMultiplyAdd {
   }
 };
 
-
-template <typename ThreadGemmShape_,
-          typename ThreadsPerWarp_,
-          typename ScalarA_,
-          typename ScalarB_,
-          typename ScalarC_,
-          MatrixLayout::Kind kLayout_ = MatrixLayout::kColumnMajor>
-struct ThreadMultiplyAddBool {
-    /// The shape of the instruction.
-    typedef Shape<1, 1, 1, 1> InstructionShape;
-    /// The shape of a thread-leveel matrix multiply accumulate.
-    typedef ThreadGemmShape_ ThreadGemmShape;
-    /// Aliased to "AccumulatorsPerThread" for compatibility. Expect to be renamed in CUTLASS v2.0
-    typedef ThreadGemmShape AccumulatorsPerThread;
-    /// The number of threads per warp.
-    typedef ThreadsPerWarp_ ThreadsPerWarp;
-    /// The number of accumulators per warp.
-    typedef typename ShapeMul<ThreadGemmShape, ThreadsPerWarp>::Shape AccumulatorsPerWarp;
-    /// The type for A.
-    typedef ScalarA_ ScalarA;
-    /// The fragment for A.
-    typedef Fragment<ScalarA, AccumulatorsPerThread::kW> FragmentA;
-    /// The type for B.
-    typedef ScalarB_ ScalarB;
-    /// The fragment for B.
-    typedef Fragment<ScalarB, AccumulatorsPerThread::kH> FragmentB;
-    /// The type for C and D.
-    typedef ScalarC_ ScalarC;
-    /// The accumulators.
-    typedef Fragment<ScalarC, AccumulatorsPerThread::kH * AccumulatorsPerThread::kW, 16> Accumulators;
-
-    /// Ctor.
-    CUTLASS_DEVICE ThreadMultiplyAddBool() {}
-
-    /// Multiply : d = a*b + c.
-    CUTLASS_DEVICE void multiply_add(FragmentA const& a,
-                                     FragmentB const& b,
-                                     Accumulators const& c,
-                                     Accumulators& d) {
-
-        if(kLayout_ == MatrixLayout::kColumnMajor) {
-
-            CUTLASS_PRAGMA_UNROLL
-            for (int j = 0; j < AccumulatorsPerThread::kH; ++j) {
-
-                CUTLASS_PRAGMA_UNROLL
-                for (int i = 0; i < AccumulatorsPerThread::kW; ++i) {
-
-                    d[j * AccumulatorsPerThread::kW + i] = a[i] & b[j] | c[j * AccumulatorsPerThread::kW + i];
-                }
-            }
-        }
-        else {
-
-            CUTLASS_PRAGMA_UNROLL
-            for(int i = 0; i < AccumulatorsPerThread::kW; ++i) {
-
-                CUTLASS_PRAGMA_UNROLL
-                for(int j = 0; j < AccumulatorsPerThread::kH; ++j) {
-
-                    d[i * AccumulatorsPerThread::kH + j] = a[i] & b[j] | c[i * AccumulatorsPerThread::kH + j];
-                }
-            }
-        }
-    }
-};
-
-__constant__ int device_grammar_size;
-__constant__ unsigned int device_grammar_body[1000];
-__constant__ unsigned long long device_grammar_tail[1000];
-
+//
+//template <typename ThreadGemmShape_,
+//          typename ThreadsPerWarp_,
+//          typename ScalarA_,
+//          typename ScalarB_,
+//          typename ScalarC_,
+//          MatrixLayout::Kind kLayout_ = MatrixLayout::kColumnMajor>
+//struct ThreadMultiplyAddBool {
+//    /// The shape of the instruction.
+//    typedef Shape<1, 1, 1, 1> InstructionShape;
+//    /// The shape of a thread-leveel matrix multiply accumulate.
+//    typedef ThreadGemmShape_ ThreadGemmShape;
+//    /// Aliased to "AccumulatorsPerThread" for compatibility. Expect to be renamed in CUTLASS v2.0
+//    typedef ThreadGemmShape AccumulatorsPerThread;
+//    /// The number of threads per warp.
+//    typedef ThreadsPerWarp_ ThreadsPerWarp;
+//    /// The number of accumulators per warp.
+//    typedef typename ShapeMul<ThreadGemmShape, ThreadsPerWarp>::Shape AccumulatorsPerWarp;
+//    /// The type for A.
+//    typedef ScalarA_ ScalarA;
+//    /// The fragment for A.
+//    typedef Fragment<ScalarA, AccumulatorsPerThread::kW> FragmentA;
+//    /// The type for B.
+//    typedef ScalarB_ ScalarB;
+//    /// The fragment for B.
+//    typedef Fragment<ScalarB, AccumulatorsPerThread::kH> FragmentB;
+//    /// The type for C and D.
+//    typedef ScalarC_ ScalarC;
+//    /// The accumulators.
+//    typedef Fragment<ScalarC, AccumulatorsPerThread::kH * AccumulatorsPerThread::kW, 16> Accumulators;
+//
+//    /// Ctor.
+//    CUTLASS_DEVICE ThreadMultiplyAddBool() {}
+//
+//    /// Multiply : d = a*b + c.
+//    CUTLASS_DEVICE void multiply_add(FragmentA const& a,
+//                                     FragmentB const& b,
+//                                     Accumulators const& c,
+//                                     Accumulators& d) {
+//
+//        if(kLayout_ == MatrixLayout::kColumnMajor) {
+//
+//            CUTLASS_PRAGMA_UNROLL
+//            for (int j = 0; j < AccumulatorsPerThread::kH; ++j) {
+//
+//                CUTLASS_PRAGMA_UNROLL
+//                for (int i = 0; i < AccumulatorsPerThread::kW; ++i) {
+//
+//                    d[j * AccumulatorsPerThread::kW + i] = a[i] & b[j] | c[j * AccumulatorsPerThread::kW + i];
+//                }
+//            }
+//        }
+//        else {
+//
+//            CUTLASS_PRAGMA_UNROLL
+//            for(int i = 0; i < AccumulatorsPerThread::kW; ++i) {
+//
+//                CUTLASS_PRAGMA_UNROLL
+//                for(int j = 0; j < AccumulatorsPerThread::kH; ++j) {
+//
+//                    d[i * AccumulatorsPerThread::kH + j] = a[i] & b[j] | c[i * AccumulatorsPerThread::kH + j];
+//                }
+//            }
+//        }
+//    }
+//};
+//
+////__constant__ int device_grammar_size;
+////__constant__ unsigned int device_grammar_body[1000];
+////__constant__ unsigned long long device_grammar_tail[1000];
+//
 template <typename ThreadGemmShape_,
         typename ThreadsPerWarp_,
         typename ScalarA_,
@@ -210,53 +210,53 @@ struct ThreadMultiplyAddBoolVector {
                                      FragmentB const& b,
                                      Accumulators const& c,
                                      Accumulators& d) {
-        
-        if(kLayout_ == MatrixLayout::kColumnMajor) {
 
-            CUTLASS_PRAGMA_UNROLL
-            for (int j = 0; j < AccumulatorsPerThread::kH; ++j) {
-
-                CUTLASS_PRAGMA_UNROLL
-                for (int i = 0; i < AccumulatorsPerThread::kW; ++i) {
-                    unsigned long long left = a[i];
-                    left <<= 32;
-                    unsigned long long right = b[j];
-                    unsigned long long conc = left | right;
-                    unsigned long long mult = 0;
-
-                    CUTLASS_PRAGMA_UNROLL
-                    for (int t = 0; t < device_grammar_size; t++) {
-                        if ((device_grammar_tail[t] & conc) == device_grammar_tail[t]) {
-                            mult |= device_grammar_body[t];
-                        }
-                    }
-                    d[j * AccumulatorsPerThread::kW + i] = mult | c[j * AccumulatorsPerThread::kW + i];
-                }
-            }
-        }
-        else {
-
-            CUTLASS_PRAGMA_UNROLL
-            for(int i = 0; i < AccumulatorsPerThread::kW; ++i) {
-
-                CUTLASS_PRAGMA_UNROLL
-                for(int j = 0; j < AccumulatorsPerThread::kH; ++j) {
-                    unsigned long long left = a[i];
-                    left <<= 32;
-                    unsigned long long right = b[j];
-                    unsigned long long conc = left | right;
-                    unsigned long long mult = 0;
-
-                    CUTLASS_PRAGMA_UNROLL
-                    for (int t = 0; t < device_grammar_size; t++) {
-                        if ((device_grammar_tail[t] & conc) == device_grammar_tail[t]) {
-                            mult |= device_grammar_body[t];
-                        }
-                    }
-                    d[i * AccumulatorsPerThread::kH + j] = mult | c[i * AccumulatorsPerThread::kH + j];
-                }
-            }
-        }
+//        if(kLayout_ == MatrixLayout::kColumnMajor) {
+//
+//            CUTLASS_PRAGMA_UNROLL
+//            for (int j = 0; j < AccumulatorsPerThread::kH; ++j) {
+//
+//                CUTLASS_PRAGMA_UNROLL
+//                for (int i = 0; i < AccumulatorsPerThread::kW; ++i) {
+//                    unsigned long long left = a[i];
+//                    left <<= 32;
+//                    unsigned long long right = b[j];
+//                    unsigned long long conc = left | right;
+//                    unsigned long long mult = 0;
+//
+//                    CUTLASS_PRAGMA_UNROLL
+//                    for (int t = 0; t < device_grammar_size; t++) {
+//                        if ((device_grammar_tail[t] & conc) == device_grammar_tail[t]) {
+//                            mult |= device_grammar_body[t];
+//                        }
+//                    }
+//                    d[j * AccumulatorsPerThread::kW + i] = mult | c[j * AccumulatorsPerThread::kW + i];
+//                }
+//            }
+//        }
+//        else {
+//
+//            CUTLASS_PRAGMA_UNROLL
+//            for(int i = 0; i < AccumulatorsPerThread::kW; ++i) {
+//
+//                CUTLASS_PRAGMA_UNROLL
+//                for(int j = 0; j < AccumulatorsPerThread::kH; ++j) {
+//                    unsigned long long left = a[i];
+//                    left <<= 32;
+//                    unsigned long long right = b[j];
+//                    unsigned long long conc = left | right;
+//                    unsigned long long mult = 0;
+//
+//                    CUTLASS_PRAGMA_UNROLL
+//                    for (int t = 0; t < device_grammar_size; t++) {
+//                        if ((device_grammar_tail[t] & conc) == device_grammar_tail[t]) {
+//                            mult |= device_grammar_body[t];
+//                        }
+//                    }
+//                    d[i * AccumulatorsPerThread::kH + j] = mult | c[i * AccumulatorsPerThread::kH + j];
+//                }
+//            }
+//        }
     }
 };
 

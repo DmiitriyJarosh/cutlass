@@ -111,7 +111,7 @@ struct IgemmConfig<OutputTile_, int8_t, ThreadGemmShape_>
           /// The tile size for the GEMM KxNxM.
           OutputTile_,
           /// The functor to do the math in the main loop.
-          ThreadMultiplyAdd<ThreadGemmShape_, Shape<1, 4, 8>, int8_t, int8_t, int>,
+          ThreadMultiplyAddBoolVector<ThreadGemmShape_, Shape<1, 4, 8>, int8_t, int8_t, int>,
           /// The number of scalars per LDG for A.
           4,
           /// The number of scalars per STS for A.
