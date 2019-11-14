@@ -98,9 +98,9 @@ cudaError_t CutlassSgemmNN(
   // including the following example for single-precision GEMM. Typical values are used as
   // default template arguments. See `cutlass/gemm/gemm_traits.h` for more details.
   //
-  typedef cutlass::gemm::IgemmTraits<
-    cutlass::MatrixLayout::kColumnMajor,   // layout of A matrix
-    cutlass::MatrixLayout::kColumnMajor,   // layout of B matrix
+  typedef cutlass::gemm::IgemmTraitsBoolVector<
+    cutlass::MatrixLayout::kRowMajor,   // layout of A matrix
+    cutlass::MatrixLayout::kRowMajor,   // layout of B matrix
     cutlass::Shape<32, 128, 128>,
     int8_t
   > GemmTraits;
@@ -185,7 +185,7 @@ cudaError_t InitializeMatrix(int8_t *matrix, int ldm, int rows, int columns, int
       int8_t * matrix_in_line = new int8_t[rows * columns];
       for (int i = 0; i < rows; i++) {
           for (int j = 0; j < columns; j++) {
-              int offset = i + j * ldm;
+              int offset = i * ldm + j;
               matrix_in_line[offset] = matrix_data[i][j];
           }
       }
@@ -349,7 +349,7 @@ cudaError_t TestCutlassGemm(int M, int N, int K, int8_t alpha, int8_t beta, int8
     if (i % 4 == 0) {
         printf("\n");
     }
-    printf("%p ", A_r[i]);
+    printf("0x%x ", A_r[i]);
   }
   printf("\n");
 
@@ -357,7 +357,7 @@ cudaError_t TestCutlassGemm(int M, int N, int K, int8_t alpha, int8_t beta, int8
       if (i % 4 == 0) {
           printf("\n");
       }
-      printf("%p ", B_r[i]);
+      printf("0x%x ", B_r[i]);
   }
   printf("\n");
 
@@ -365,7 +365,7 @@ cudaError_t TestCutlassGemm(int M, int N, int K, int8_t alpha, int8_t beta, int8
       if (i % 4 == 0) {
           printf("\n");
       }
-      printf("%p ", host_cutlass[i]);
+      printf("0x%x ", host_cutlass[i]);
   }
   printf("\n");
 
@@ -420,18 +420,18 @@ int main(int argc, const char *arg[]) {
 
   int8_t ** matrixA = new int8_t*[4];
   matrixA[0] = new int8_t[4]{0,0,0,0};
-  matrixA[1] = new int8_t[4]{0,0,0,0};
-  matrixA[2] = new int8_t[4]{0,0,0,0};
-  matrixA[3] = new int8_t[4]{0x10,0,0,0};
+  matrixA[1] = new int8_t[4]{0,0x1,0x10,0};
+  matrixA[2] = new int8_t[4]{0,0x0,0x0,0};
+  matrixA[3] = new int8_t[4]{0,0,0,0};
   
   int8_t ** matrixB = new int8_t*[4];
-  matrixB[0] = new int8_t[4]{0,0,0,0x10};
-  matrixB[1] = new int8_t[4]{0,0,0,0};
-  matrixB[2] = new int8_t[4]{0,0,0,0};
+  matrixB[0] = new int8_t[4]{0,0,0,0};
+  matrixB[1] = new int8_t[4]{0,0x11,0x0,0};
+  matrixB[2] = new int8_t[4]{0,0x10,0x0,0};
   matrixB[3] = new int8_t[4]{0,0,0,0};
 
   int grammar_size = 3;
-  unsigned char * grammar_body = new unsigned char[grammar_size]{0x1,0x5,0x4};
+  unsigned char * grammar_body = new unsigned char[grammar_size]{0x1,0x2,0x4};
   unsigned int * grammar_tail = new unsigned int[grammar_size]{0x111,0x1010,0x10};
 
   unsigned int * global_device_grammar_body = 0;

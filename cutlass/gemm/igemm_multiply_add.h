@@ -144,27 +144,21 @@ struct ThreadMultiplyAddBoolVector<ThreadGemmShape_, ThreadsPerWarp_, int8_t, in
         unsigned int const* a_int = reinterpret_cast<unsigned int const*>(&a[0]);
         unsigned int const* b_int = reinterpret_cast<unsigned int const*>(&b[0]);
 
-        CUTLASS_PRAGMA_UNROLL
+        //CUTLASS_PRAGMA_UNROLL
         for (int j = 0; j < AccumulatorsPerThread::kH; ++j) {
-            CUTLASS_PRAGMA_UNROLL
+            //CUTLASS_PRAGMA_UNROLL
             for (int i = 0; i < AccumulatorsPerThread::kW; ++i) {
                 unsigned int mult = 0;
-                CUTLASS_PRAGMA_UNROLL
+                //CUTLASS_PRAGMA_UNROLL
                 for (int k = 0; k < 4; k++) {
-                    unsigned int left = (a_int[i] >> k * 2) & 0xFF;
+                    unsigned int left = (a_int[i] >> (k * 8)) & 0xFF;
                     left <<= 8;
-                    unsigned int right = (b_int[j] >> k * 2) & 0xFF;
+                    unsigned int right = (b_int[j] >> (k * 8)) & 0xFF;
                     unsigned int conc = left | right;
-                    if (left != 0 || right != 0) printf("%p %p %p\n", left >> 8, right, conc);
-
                     for (int t = 0; t < device_grammar_size; t++) {
                         if ((device_grammar_tail[t] & conc) == device_grammar_tail[t]) {
                             mult |= device_grammar_body[t];
                         }
-                    }
-                    // we should move as we work with 4 numbers in one
-                    if (k != 3) {
-                        mult <<= 8;
                     }
                 }
                 d[j * AccumulatorsPerThread::kW + i] = mult | c[j * AccumulatorsPerThread::kW + i];

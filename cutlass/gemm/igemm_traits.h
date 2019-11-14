@@ -95,10 +95,100 @@ struct IgemmConfig : public GemmConfig<
                          false>
 {};
 
+template <
+        /// The tile size for the GEMM KxNxM.
+        typename OutputTile_,
+        /// The output type.
+        typename ScalarD_,
+        /// Tile size for thread-level GEMM (K-by-N-by-M)
+        typename ThreadGemmShape_>
+struct IgemmConfigBoolVector : public GemmConfig<
+        /// The scalar type for A.
+        int8_t,
+        /// The scalar type for B.
+        int8_t,
+        /// The scalar type for C.
+        ScalarD_,
+        /// The scalar type for D.
+        ScalarD_,
+        /// The tile size for the GEMM KxNxM.
+        OutputTile_,
+        /// The functor to do the math in the main loop.
+        ThreadMultiplyAddBoolVector<ThreadGemmShape_, Shape<1, 4, 8>, int8_t, int8_t, int>,
+        /// The number of scalars per LDG for A.
+        4,
+        /// The number of scalars per STS for A.
+        4,
+        /// The number of scalars per LDS for A.
+        16,
+        /// The number of scalars per LDG for B.
+        4,
+        /// The number of scalars per STS for B.
+        4,
+        /// The number of scalars per LDS for B.
+        16,
+        /// The number of scalars per LDG for C and STG for D.
+        1,
+        /// The number of scalars per STS for D.
+        4,
+        /// The number of scalars per LDS for D.
+        1,
+        /// The number of stages in shared memory.
+        2,
+        /// kResidueSeparate
+        false,
+        /// kResidueInPrologue
+        true,
+        /// kLaunchBounds
+        false>{};
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename OutputTile_, typename ThreadGemmShape_>
 struct IgemmConfig<OutputTile_, int8_t, ThreadGemmShape_>
+        : public GemmConfig<
+                /// The scalar type for A.
+                int8_t,
+                /// The scalar type for B.
+                int8_t,
+                /// The scalar type for C.
+                int8_t,
+                /// The scalar type for D.
+                int8_t,
+                /// The tile size for the GEMM KxNxM.
+                OutputTile_,
+                /// The functor to do the math in the main loop.
+                ThreadMultiplyAdd<ThreadGemmShape_, Shape<1, 4, 8>, int8_t, int8_t, int>,
+                /// The number of scalars per LDG for A.
+                4,
+                /// The number of scalars per STS for A.
+                4,
+                /// The number of scalars per LDS for A.
+                16,
+                /// The number of scalars per LDG for B.
+                4,
+                /// The number of scalars per STS for B.
+                4,
+                /// The number of scalars per LDS for B.
+                16,
+                /// The number of scalars per LDG for C and STG for D.
+                4,
+                /// The number of scalars per STS for D.
+                4,
+                /// The number of scalars per LDS for D.
+                4,
+                /// The number of stages in shared memory.
+                2,
+                /// If true, separate mainloop is instantiated from residue
+                false,
+                /// Compute residue in prolog?
+                true,
+                /// Launch bounds?
+                false> {};
+
+
+template <typename OutputTile_, typename ThreadGemmShape_>
+struct IgemmConfigBoolVector<OutputTile_, int8_t, ThreadGemmShape_>
     : public GemmConfig<
           /// The scalar type for A.
           int8_t,
@@ -421,6 +511,7 @@ template <
 struct IgemmTraitsHelper {
   /// The IGEMM config.
   typedef IgemmConfig<OutputTile_, ScalarD_, ThreadGemmShape_> GemmConfig;
+  typedef IgemmConfigBoolVector<OutputTile_, ScalarD_, ThreadGemmShape_> GemmConfigBoolVector;
   /// The GEMM config for A.
   typedef IgemmTileTraitsHelperA<kLayoutA_, GemmConfig, Index_> GemmTileTraitsHelperA;
   /// The GEMM config for B.
@@ -546,6 +637,50 @@ struct IgemmTraits : public GemmTraits<
                          Index_,
                          // The tool used to clear accumulators.
                          typename Helper_::ClearAccumulators> {};
+
+
+template <
+        /// The layout for A.
+        MatrixLayout::Kind kLayoutA_,
+        /// The layout for B.
+        MatrixLayout::Kind kLayoutB_,
+        /// The output tile.
+        typename OutputTile_ = Shape<32, 128, 128>,
+        /// The output type.
+        typename ScalarD_ = int,
+        /// The functor to do the math in the epilogue.
+        typename EpilogueFunctor_ = LinearScaling<typename IgemmEpilogueScalar<ScalarD_>::Scalar>,
+        /// Tile size for thread-level GEMM (K-by-N-by-M)
+        typename ThreadGemmShape_ = Shape<32, 8, 8>,
+        /// The index.
+        typename Index_ = int,
+        /// The helper class.
+        typename Helper_ = IgemmTraitsHelper<kLayoutA_,
+                kLayoutB_,
+                OutputTile_,
+                ScalarD_,
+                EpilogueFunctor_,
+                ThreadGemmShape_,
+                Index_> >
+struct IgemmTraitsBoolVector : public GemmTraits<
+        // The config.
+        typename Helper_::GemmConfigBoolVector,
+        // The stream to load A from global memory to shared memory.
+        typename Helper_::GlobalLoadStreamA,
+        // The stream to load B from global memory to shared memory.
+        typename Helper_::GlobalLoadStreamB,
+        // The stream to load A from shared memory.
+        typename Helper_::SharedLoadStreamA,
+        // The stream to load B from shared memory.
+        typename Helper_::SharedLoadStreamB,
+        // The epilogue.
+        typename Helper_::Epilogue,
+        // The block swizzle to reorganize the grid.
+        IdentityBlockSwizzle,
+        // The index.
+        Index_,
+        // The tool used to clear accumulators.
+        typename Helper_::ClearAccumulators> {};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
